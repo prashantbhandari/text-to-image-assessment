@@ -26,6 +26,7 @@ class CreditController extends Controller
                 ->map(fn ($e) => [
                     'id' => $e->id,
                     'type' => $e->type,
+                    'note' => $e->note,
                     'amount_nano' => $e->amount_nano,
                     'balance_after_nano' => $e->balance_after_nano,
                     'created_at' => $e->created_at->toIso8601String(),

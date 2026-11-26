@@ -5,13 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A single image generation request and its billing outcome.
  */
 class Generation extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     public const QUEUED = 'queued';
 

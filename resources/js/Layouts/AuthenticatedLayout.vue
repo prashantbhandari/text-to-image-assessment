@@ -5,6 +5,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { formatNano } from '@/money';
 import BrandMark from '@/Components/BrandMark.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import Toast from '@/Components/Toast.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -15,7 +16,7 @@ const links = computed(() => [
     { name: 'Create', href: route('generations.create'), active: route().current('generations.create') },
     { name: 'History', href: route('generations.index'), active: route().current('generations.index') },
     { name: 'Credits', href: route('credits.index'), active: route().current('credits.index') },
-    ...(user.value.is_admin ? [{ name: 'Report', href: route('admin.report'), active: route().current('admin.report') }] : []),
+    ...(user.value.is_admin ? [{ name: 'Admin', href: route('admin.report'), active: route().current('admin.*') }] : []),
 ]);
 </script>
 
@@ -60,5 +61,6 @@ const links = computed(() => [
 
         <header v-if="$slots.header" class="mx-auto max-w-6xl px-4 pt-10 sm:px-6"><slot name="header" /></header>
         <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6"><slot /></main>
+        <Toast />
     </div>
 </template>

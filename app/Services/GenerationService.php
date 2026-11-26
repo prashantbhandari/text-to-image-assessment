@@ -25,6 +25,8 @@ class GenerationService
      */
     public function create(User $user, array $data): Generation
     {
+        $this->ensureCapacity($user);
+
         $refs = array_values(array_filter($data['reference_images'] ?? []));
         $estimate = $this->pricing->estimate($data['prompt'], $data['size'], $data['quality'], count($refs));
 
@@ -50,6 +52,39 @@ class GenerationService
         $this->submit($generation, $refs);
 
         return $generation->fresh();
+    }
+
+    /**
+     * Refuse early when Pixelforge's shared account limits (or our per-user cap)
+     * would reject the request anyway. No row is created and nothing is charged.
+     */
+    private function ensureCapacity(User $user): void
+    {
+        $inFlight = Generation::query()
+            ->whereIn('status', [Generation::QUEUED, Generation::PROCESSING])
+            ->where('created_at', '>', now()->subMinutes((int) config('pixelforge.stale_after_minutes')))
+            ->count();
+
+        if ($inFlight >= (int) config('pixelforge.max_concurrent')) {
+            throw ValidationException::withMessages([
+                'prompt' => 'The studio is busy right now (all slots are in use). Please try again in a few seconds.',
+            ]);
+        }
+
+        $todayStart = now()->startOfDay(); // app timezone is UTC, matching Pixelforge's day
+        $today = Generation::withTrashed()->where('created_at', '>=', $todayStart);
+
+        if ((clone $today)->count() >= (int) config('pixelforge.max_daily_global')) {
+            throw ValidationException::withMessages([
+                'prompt' => 'We have reached today\'s generation limit. Please try again tomorrow.',
+            ]);
+        }
+
+        if ((clone $today)->where('user_id', $user->id)->count() >= (int) config('pixelforge.max_daily_per_user')) {
+            throw ValidationException::withMessages([
+                'prompt' => 'You have reached your daily limit of '.config('pixelforge.max_daily_per_user').' images. It resets at midnight UTC.',
+            ]);
+        }
     }
 
     /** @param array<int, string> $refs */

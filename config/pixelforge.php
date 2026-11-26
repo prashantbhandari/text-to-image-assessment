@@ -44,6 +44,16 @@ return [
         'high' => ['min' => 1000, 'max' => 8000],
     ],
 
+    // Pixelforge enforces these per ACCOUNT (shared by all our users): 3 generations
+    // queued/processing at once and 500 per UTC day. We refuse early with a clear message
+    // instead of creating a row Pixelforge would reject.
+    'max_concurrent' => 3,
+    'max_daily_global' => 500,
+    // Fair-use cap so one user can't use up the shared daily allowance.
+    'max_daily_per_user' => 100,
+    // A queued/processing row older than this is treated as stuck, not as capacity in use.
+    'stale_after_minutes' => 15,
+
     // Fake "Buy credits" packs, in whole USD.
     'credit_packs' => [5, 10, 25, 50],
 ];

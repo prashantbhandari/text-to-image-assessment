@@ -28,7 +28,7 @@ class GenerationStateService
     {
         return DB::transaction(function () use ($generation, $snapshot) {
             /** @var Generation $g */
-            $g = Generation::query()->lockForUpdate()->findOrFail($generation->id);
+            $g = Generation::withTrashed()->lockForUpdate()->findOrFail($generation->id);
 
             if (! $g->provider_id && isset($snapshot['id'])) {
                 $g->provider_id = $snapshot['id'];
@@ -64,7 +64,7 @@ class GenerationStateService
     public function failLocally(Generation $g, string $code, string $message): void
     {
         DB::transaction(function () use ($g, $code, $message) {
-            $locked = Generation::query()->lockForUpdate()->findOrFail($g->id);
+            $locked = Generation::withTrashed()->lockForUpdate()->findOrFail($g->id);
             if (! $locked->isTerminal()) {
                 $this->markFailed($locked, $code, $message, null);
                 $locked->charged_nano = 0;

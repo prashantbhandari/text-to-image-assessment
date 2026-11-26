@@ -53,20 +53,32 @@ class WebhookController extends Controller
             ]);
 
             if ($inserted === 0) {
+                // Re-delivery of an event we already handled: count it, change nothing else.
+                WebhookEvent::query()->where('event_id', $eventId)->update([
+                    'delivery_count' => DB::raw('delivery_count + 1'),
+                    'last_delivery_at' => now(),
+                ]);
+
                 return;
             }
 
             // Match by provider id, or by the uuid we sent as metadata (the webhook can
             // beat the create-response, before we have stored provider_id).
             $uuid = $snapshot['metadata']['generation_uuid'] ?? null;
-            $generation = Generation::query()
+            $generation = Generation::withTrashed()
                 ->where('provider_id', $snapshot['id'])
                 ->when($uuid, fn ($q) => $q->orWhere('uuid', $uuid))
                 ->first();
 
+            $outcome = 'unmatched';
             if ($generation) {
-                $state->apply($generation, $snapshot);
+                $before = [$generation->status, $generation->charged_nano];
+                $after = $state->apply($generation, $snapshot);
+                // "applied" only if the event actually moved the generation forward.
+                $outcome = [$after->status, $after->charged_nano] !== $before ? 'applied' : 'ignored';
             }
+
+            WebhookEvent::query()->where('event_id', $eventId)->update(['outcome' => $outcome, 'last_delivery_at' => now()]);
         });
 
         return response()->json(['received' => true]);

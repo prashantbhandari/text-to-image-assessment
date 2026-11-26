@@ -20,7 +20,7 @@ class SyncGenerations extends Command
 
     public function handle(PixelforgeClient $client, GenerationStateService $state): int
     {
-        $stale = Generation::query()
+        $stale = Generation::withTrashed()
             ->whereIn('status', [Generation::QUEUED, Generation::PROCESSING])
             ->whereNotNull('provider_id')
             ->where('created_at', '<', now()->subSeconds((int) $this->option('older-than')))

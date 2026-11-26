@@ -8,9 +8,15 @@ import { estimatePrice, formatNano } from '@/money';
 const props = defineProps({
     pricing: Object,
     available_nano: Number, // balance minus the worst-case reserve of in-flight jobs
+    prefill: Object, // settings of an earlier generation (History -> Reuse), or null
 });
 
-const form = useForm({ prompt: '', size: '1024x1024', quality: 'medium', reference_images: [] });
+const form = useForm({
+    prompt: props.prefill?.prompt ?? '',
+    size: props.prefill?.size ?? '1024x1024',
+    quality: props.prefill?.quality ?? 'medium',
+    reference_images: [...(props.prefill?.reference_images ?? [])],
+});
 
 // Size tiles draw the actual aspect ratio so the choice is visual.
 const sizes = [
@@ -57,7 +63,8 @@ const submit = () => {
     <AuthenticatedLayout>
         <template #header>
             <h1 class="text-4xl font-semibold sm:text-5xl">What shall we <span class="italic text-brand">create?</span></h1>
-            <p class="mt-2 max-w-xl text-muted">Describe the image. You'll see the price before you commit, and you only pay when it succeeds.</p>
+            <p v-if="prefill" class="mt-2 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-sm text-brand">↻ Settings copied from an earlier image. Tweak anything and generate again.</p>
+            <p v-else class="mt-2 max-w-xl text-muted">Describe the image. You'll see the price before you commit, and you only pay when it succeeds.</p>
         </template>
 
         <form class="grid gap-6 lg:grid-cols-[1fr_340px]" @submit.prevent="submit">

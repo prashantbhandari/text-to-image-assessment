@@ -12,6 +12,8 @@ class LedgerEntry extends Model
 
     public const CHARGE = 'charge';
 
+    public const ADJUSTMENT = 'adjustment';
+
     protected $guarded = [];
 
     public function user(): BelongsTo

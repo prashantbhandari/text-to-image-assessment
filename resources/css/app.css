@@ -75,6 +75,9 @@
     .btn-ghost {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-fg transition hover:bg-surface-2;
     }
+    .icon-btn {
+        @apply grid h-9 w-9 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-fg;
+    }
     .card {
         @apply rounded-2xl border border-line bg-surface shadow-card;
     }

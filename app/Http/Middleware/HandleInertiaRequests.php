@@ -31,6 +31,10 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
+            // One-shot messages (e.g. rate-limit notices) shown by the Toast component.
+            'flash' => [
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'auth' => [
                 'user' => $request->user() ? [
                     'id' => $request->user()->id,

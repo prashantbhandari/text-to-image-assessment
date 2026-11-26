@@ -92,6 +92,24 @@ Operators only (`users.is_admin`, `EnsureAdmin` middleware; grant with `php arti
 
 `WebhookTest` — bad signature, stale timestamp, duplicate delivery charged once, late `processing` after success, failed = free, matching before `provider_id` is stored. `GenerationFlowTest` — docs worst-case example ($0.373875), insufficient credits, idempotency key sent, in-flight reservation, buying credits, admin access and sums.
 
-## 12. Deployment (Laravel Cloud)
+## 12. Rate limiting and abuse protection
+
+Limiters are defined in `AppServiceProvider::configureRateLimiting()` and attached with `throttle:<name>`. Authenticated routes are limited per user, public ones per IP.
+
+| Limiter | Where | Limit |
+|---|---|---|
+| (in `LoginRequest`) | login | 5 failed attempts per email + IP, then locked out |
+| `login` | login | 20 / min per IP (stops one address trying many emails) |
+| `register` | register | 5 / min and 20 / hour per IP |
+| `sensitive` | forgot / reset / confirm / change password, delete account | 5 / min and 30 / hour |
+| `generate` | create image | 6 / min and 60 / hour per user |
+| `actions` | buy credits, delete image, edit profile | 30 / min per user |
+| `webhook` | `/webhooks/pixelforge` | 600 / min per IP (generous: a dropped event only delays a result) |
+
+When a limit is hit, browsers get a redirect back with a toast ("Too many attempts. Please try again in N seconds", `Components/Toast.vue`). JSON clients get the standard 429 with `Retry-After`.
+
+**Pixelforge's own limits** are per account, so they are shared by every user. `GenerationService::ensureCapacity()` checks them before creating anything, so nothing is created or charged when they would be hit: 3 generations queued/processing at once (`max_concurrent`; rows stuck for over 15 minutes don't count), 500 per UTC day (`max_daily_global`), and a fair-use cap of 100 per user per day (`max_daily_per_user`). All are in `config/pixelforge.php`.
+
+## 13. Deployment (Laravel Cloud)
 
 Environment variables: `APP_KEY`, `APP_URL`, Postgres `DB_*`, `PIXELFORGE_API_KEY`, `PIXELFORGE_WEBHOOK_SECRET`, `QUEUE_CONNECTION`/`SESSION_DRIVER` as in `.env.example`. Run `php artisan migrate --force` on deploy, build assets with `npm run build`, and enable the scheduler. In the Pixelforge dashboard set the webhook URL to `https://<your-app>/webhooks/pixelforge`.
