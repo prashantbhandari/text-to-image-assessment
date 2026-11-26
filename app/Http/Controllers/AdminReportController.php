@@ -25,16 +25,16 @@ class AdminReportController extends Controller
         $day = DB::raw('DATE(completed_at) as day');
         $sums = 'SUM(charged_nano) as charged, SUM(provider_cost_nano) as cost, COUNT(*) as generations';
 
-        $perDay = Generation::query()->where('status', Generation::SUCCEEDED)
+        $perDay = Generation::withTrashed()->where('status', Generation::SUCCEEDED)
             ->selectRaw("DATE(completed_at) as day, $sums")
             ->groupBy('day')->orderByDesc('day')->get();
 
-        $perUser = Generation::query()->where('generations.status', Generation::SUCCEEDED)
+        $perUser = Generation::withTrashed()->where('generations.status', Generation::SUCCEEDED)
             ->join('users', 'users.id', '=', 'generations.user_id')
             ->selectRaw("users.id as user_id, users.name, users.email, $sums")
             ->groupBy('users.id', 'users.name', 'users.email')->orderByDesc('charged')->get();
 
-        $perDayUser = Generation::query()->where('generations.status', Generation::SUCCEEDED)
+        $perDayUser = Generation::withTrashed()->where('generations.status', Generation::SUCCEEDED)
             ->join('users', 'users.id', '=', 'generations.user_id')
             ->selectRaw("DATE(completed_at) as day, users.id as user_id, users.name, users.email, $sums")
             ->groupBy('day', 'users.id', 'users.name', 'users.email')

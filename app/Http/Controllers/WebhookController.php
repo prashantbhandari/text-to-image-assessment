@@ -59,7 +59,7 @@ class WebhookController extends Controller
             // Match by provider id, or by the uuid we sent as metadata (the webhook can
             // beat the create-response, before we have stored provider_id).
             $uuid = $snapshot['metadata']['generation_uuid'] ?? null;
-            $generation = Generation::query()
+            $generation = Generation::withTrashed()
                 ->where('provider_id', $snapshot['id'])
                 ->when($uuid, fn ($q) => $q->orWhere('uuid', $uuid))
                 ->first();

@@ -23,6 +23,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/generate', [GenerationController::class, 'create'])->name('generations.create');
     Route::post('/generate', [GenerationController::class, 'store'])->middleware('throttle:20,1')->name('generations.store');
     Route::get('/history', [GenerationController::class, 'index'])->name('generations.index');
+    Route::get('/generations/{generation}/download', [GenerationController::class, 'download'])->name('generations.download');
+    Route::delete('/generations/{generation}', [GenerationController::class, 'destroy'])->name('generations.destroy');
 
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::post('/credits', [CreditController::class, 'purchase'])->name('credits.purchase');
