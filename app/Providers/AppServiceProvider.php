@@ -63,6 +63,9 @@ class AppServiceProvider extends ServiceProvider
         // Other state-changing actions (buy credits, delete, profile edits).
         RateLimiter::for('actions', fn (Request $r) => Limit::perMinute(30)->by($who($r)));
 
+        // Scheduler-by-URL: once a minute is the intended use; allow headroom for retries.
+        RateLimiter::for('cron', fn (Request $r) => Limit::perMinute(10)->by($r->ip()));
+
         // Pixelforge webhooks: generous, because a dropped event only delays a result.
         RateLimiter::for('webhook', fn (Request $r) => Limit::perMinute(600)->by($r->ip()));
     }

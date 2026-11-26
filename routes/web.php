@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\WebhookEventController as AdminWebhookEventController;
 use App\Http\Controllers\CreditController;
+use App\Http\Controllers\CronController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebhookController;
@@ -18,6 +19,9 @@ Route::get('/', fn () => Inertia::render('Welcome', [
 
 // Pixelforge -> us. Public, CSRF-exempt, authenticated by HMAC signature.
 Route::post('/webhooks/pixelforge', WebhookController::class)->middleware('throttle:webhook')->name('webhooks.pixelforge');
+
+// Scheduler trigger for hosts without a shell (disabled unless CRON_TOKEN is set).
+Route::get('/cron/{token}', CronController::class)->middleware('throttle:cron')->name('cron');
 
 Route::middleware('auth')->group(function () {
     Route::redirect('/dashboard', '/generate')->name('dashboard');

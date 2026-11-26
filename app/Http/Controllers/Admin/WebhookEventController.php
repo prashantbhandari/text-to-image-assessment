@@ -23,8 +23,10 @@ class WebhookEventController extends Controller
         $events = WebhookEvent::query()
             ->with('generation.user:id,name,email')
             ->when($type, fn ($q) => $q->where('type', $type))
+            // Case-insensitive on PostgreSQL and MariaDB/MySQL alike (ILIKE is Postgres-only).
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->where('event_id', 'ilike', "%{$search}%")->orWhere('generation_provider_id', 'ilike', "%{$search}%")))
+                ->whereRaw('LOWER(event_id) LIKE ?', ['%'.mb_strtolower($search).'%'])
+                ->orWhereRaw('LOWER(generation_provider_id) LIKE ?', ['%'.mb_strtolower($search).'%'])))
             ->when($only === 'duplicates', fn ($q) => $q->where('delivery_count', '>', 1))
             ->when($only === 'ignored', fn ($q) => $q->where('outcome', 'ignored'))
             ->latest('id')

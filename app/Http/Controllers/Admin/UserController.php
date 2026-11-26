@@ -27,8 +27,10 @@ class UserController extends Controller
                 'generations as images' => fn ($q) => $q->withTrashed()->where('status', Generation::SUCCEEDED),
                 'generations as failed' => fn ($q) => $q->withTrashed()->where('status', Generation::FAILED),
             ])
+            // Case-insensitive on PostgreSQL and MariaDB/MySQL alike (ILIKE is Postgres-only).
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
-                ->where('name', 'ilike', "%{$search}%")->orWhere('email', 'ilike', "%{$search}%")))
+                ->whereRaw('LOWER(name) LIKE ?', ['%'.mb_strtolower($search).'%'])
+                ->orWhereRaw('LOWER(email) LIKE ?', ['%'.mb_strtolower($search).'%'])))
             ->latest('id')
             ->paginate(20)
             ->withQueryString()
