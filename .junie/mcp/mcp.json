@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/home/testprashant/.config/herd-lite/bin/php",
+            "args": [
+                "/home/testprashant/Documents/paul-xavier-assessment/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
