@@ -1,4 +1,4 @@
-# Imagen
+# Imagen Pixelforge Assessment
 
 A Laravel app where signed-in users generate images with the **Pixelforge** API and pay per image. Requests are sent to Pixelforge in the background, results arrive by webhook, and the generated images show up in the user's history once they finish.
 
