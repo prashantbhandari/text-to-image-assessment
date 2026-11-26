@@ -5,6 +5,7 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { formatNano } from '@/money';
 import BrandMark from '@/Components/BrandMark.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import Toast from '@/Components/Toast.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
@@ -60,5 +61,6 @@ const links = computed(() => [
 
         <header v-if="$slots.header" class="mx-auto max-w-6xl px-4 pt-10 sm:px-6"><slot name="header" /></header>
         <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6"><slot /></main>
+        <Toast />
     </div>
 </template>

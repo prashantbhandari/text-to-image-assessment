@@ -96,5 +96,10 @@ const submit = () => {
                 </PrimaryButton>
             </div>
         </form>
+
+        <p class="mt-6 border-t border-line pt-5 text-center text-sm text-muted">
+            New to Imagen?
+            <Link :href="route('register')" class="font-semibold text-brand underline-offset-4 hover:underline">Create an account</Link>
+        </p>
     </GuestLayout>
 </template>

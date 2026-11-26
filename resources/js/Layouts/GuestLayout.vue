@@ -2,6 +2,7 @@
 // Layout for login / register / password screens: brand panel + form card.
 import BrandMark from '@/Components/BrandMark.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import Toast from '@/Components/Toast.vue';
 import { Link } from '@inertiajs/vue3';
 </script>
 
@@ -32,5 +33,6 @@ import { Link } from '@inertiajs/vue3';
                 <slot />
             </div>
         </main>
+        <Toast />
     </div>
 </template>
