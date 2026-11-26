@@ -31,6 +31,34 @@ class CreditService
     }
 
     /**
+     * Operator credit adjustment (positive = give, negative = take). The resulting
+     * balance can never go below zero. Recorded in the ledger like every other movement.
+     *
+     * @throws \InvalidArgumentException when it would make the balance negative
+     */
+    public function adjust(User $user, int $amountNano, ?string $note = null): LedgerEntry
+    {
+        return DB::transaction(function () use ($user, $amountNano, $note) {
+            $locked = User::query()->lockForUpdate()->findOrFail($user->id);
+
+            if ($locked->balance_nano + $amountNano < 0) {
+                throw new \InvalidArgumentException('That would make the balance negative.');
+            }
+
+            $locked->balance_nano += $amountNano;
+            $locked->save();
+
+            return LedgerEntry::create([
+                'user_id' => $locked->id,
+                'type' => LedgerEntry::ADJUSTMENT,
+                'amount_nano' => $amountNano,
+                'balance_after_nano' => $locked->balance_nano,
+                'note' => $note,
+            ]);
+        });
+    }
+
+    /**
      * Charge a finished generation. Idempotent: the unique (generation_id, type)
      * index and the charged_nano check mean a generation is charged at most once.
      * Must be called inside a transaction that already locks the generation.

@@ -20,7 +20,8 @@ class MakeAdmin extends Command
 
             return self::FAILURE;
         }
-        $user->update(['is_admin' => true]);
+        // is_admin is deliberately not mass-assignable (so a request can never set it), hence forceFill.
+        $user->forceFill(['is_admin' => true])->save();
         $this->info("{$user->email} is now an admin.");
 
         return self::SUCCESS;

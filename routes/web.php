@@ -1,6 +1,8 @@
 <?php
 
-use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\Admin\ReportController as AdminReportController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\WebhookEventController as AdminWebhookEventController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\ProfileController;
@@ -33,7 +35,15 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:actions')->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->middleware('throttle:sensitive')->name('profile.destroy');
 
-    Route::get('/admin/report', AdminReportController::class)->middleware(EnsureAdmin::class)->name('admin.report');
+    // Operator console (admins only).
+    Route::middleware(EnsureAdmin::class)->prefix('admin')->name('admin.')->group(function () {
+        Route::redirect('/', '/admin/report');
+        Route::get('/report', [AdminReportController::class, 'index'])->name('report');
+        Route::get('/report/export', [AdminReportController::class, 'export'])->name('report.export');
+        Route::get('/users', [AdminUserController::class, 'index'])->name('users');
+        Route::post('/users/{user}/credits', [AdminUserController::class, 'adjust'])->middleware('throttle:actions')->name('users.credits');
+        Route::get('/webhooks', [AdminWebhookEventController::class, 'index'])->name('webhooks');
+    });
 });
 
 require __DIR__.'/auth.php';

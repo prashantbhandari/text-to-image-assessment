@@ -16,7 +16,7 @@ const links = computed(() => [
     { name: 'Create', href: route('generations.create'), active: route().current('generations.create') },
     { name: 'History', href: route('generations.index'), active: route().current('generations.index') },
     { name: 'Credits', href: route('credits.index'), active: route().current('credits.index') },
-    ...(user.value.is_admin ? [{ name: 'Report', href: route('admin.report'), active: route().current('admin.report') }] : []),
+    ...(user.value.is_admin ? [{ name: 'Admin', href: route('admin.report'), active: route().current('admin.*') }] : []),
 ]);
 </script>
 

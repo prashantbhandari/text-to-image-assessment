@@ -47,7 +47,7 @@ const buy = (amount) => {
                     <tbody class="divide-y divide-line">
                         <tr v-for="e in ledger" :key="e.id" class="transition hover:bg-surface-2">
                             <td class="px-5 py-3 text-muted">{{ new Date(e.created_at).toLocaleString() }}</td>
-                            <td class="px-5 py-3">{{ e.type === 'charge' ? 'Image generation' : 'Credit purchase' }}</td>
+                            <td class="px-5 py-3">{{ e.type === 'charge' ? 'Image generation' : e.type === 'adjustment' ? 'Adjustment' + (e.note ? ': ' + e.note : '') : 'Credit purchase' }}</td>
                             <td class="px-5 py-3 text-right font-semibold tabular-nums" :class="e.amount_nano >= 0 ? 'text-emerald-600 dark:text-emerald-400' : ''">{{ e.amount_nano >= 0 ? '+' : '' }}{{ formatNano(e.amount_nano, 6) }}</td>
                             <td class="px-5 py-3 text-right tabular-nums text-muted">{{ formatNano(e.balance_after_nano, 6) }}</td>
                         </tr>

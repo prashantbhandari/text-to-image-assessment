@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Generation;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -86,5 +87,37 @@ class HistoryActionsTest extends TestCase
         $g = Generation::factory()->for($user)->create(['status' => 'succeeded', 'image_url' => 'https://img.test/a.png', 'image_expires_at' => now()->subHour()]);
 
         $this->actingAs($user)->get("/generations/{$g->id}/download")->assertStatus(410);
+    }
+
+    public function test_deleting_an_account_keeps_its_financial_records(): void
+    {
+        $user = User::factory()->create(['email' => 'gone@example.test']);
+        Generation::factory()->for($user)->create(['status' => 'succeeded', 'completed_at' => now(), 'provider_cost_nano' => 100, 'charged_nano' => 125]);
+
+        $this->actingAs($user)->delete('/profile', ['password' => 'password'])->assertRedirect('/');
+
+        $this->assertGuest();
+        $this->assertSame(1, Generation::count());
+        $this->assertSoftDeleted($user);
+        $this->assertDatabaseMissing('users', ['email' => 'gone@example.test']); // anonymised
+
+        // The books still include it, attributed to "Deleted user".
+        Http::fake(['*/usage*' => Http::response(['data' => [], 'total' => ['cost_usd' => '0.000000000']])]);
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->actingAs($admin)->get('/admin/report')
+            ->assertInertia(fn ($p) => $p->where('totals.cost_nano', 100)->where('per_user.0.name', 'Deleted user'));
+
+        // The same email can register again.
+        User::factory()->create(['email' => 'gone@example.test']);
+        $this->assertDatabaseHas('users', ['email' => 'gone@example.test']);
+    }
+
+    public function test_the_database_refuses_to_hard_delete_a_user_with_records(): void
+    {
+        $user = User::factory()->create();
+        Generation::factory()->for($user)->create();
+
+        $this->expectException(QueryException::class);
+        $user->forceDelete();
     }
 }
