@@ -1,58 +1,109 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Imagen
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel app where signed-in users generate images with the **Pixelforge** API and pay per image. Requests are sent to Pixelforge in the background, results arrive by webhook, and the generated images show up in the user's history once they finish.
 
-## About Laravel
+**Stack:** Laravel 13 · Inertia · Vue 3 · Tailwind CSS · PostgreSQL
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What it does
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Generate**: write a prompt, pick a size and quality, optionally add up to 4 reference image URLs. The estimated cost is shown before you submit.
+- **Pricing**: users pay Pixelforge's cost plus a 25% markup. The price shown up front is an estimate, because reasoning tokens are only known after completion. When a generation finishes, the actual cost is recorded. Failed generations are free.
+- **History**: live status (queued, processing, succeeded, failed), estimated and actual cost, and the image.
+- **Webhooks**: signatures are verified, duplicate events are ignored, and out-of-order events can't undo a finished generation. A polling command acts as a fallback.
+- **Credits**: users have a balance (credits are US dollars). A "Buy credits" button adds fake credits, and generating is blocked when the user can't afford it.
+- **Admin report**: operators see credit spend, provider cost and profit per day and per user, checked against Pixelforge's `GET /v1/usage`.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Costs are stored as integer nanodollars (1 USD = 1,000,000,000), so sub-cent amounts are exact. See [DOCUMENTATION.md](DOCUMENTATION.md) for how everything works in detail.
 
-## Learning Laravel
+## Requirements
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.3+ with `pdo_pgsql` (the project uses 8.5) and Composer
+- Node.js 20+ and npm
+- PostgreSQL 15+ (Docker is the easiest way)
+- A Pixelforge API key and its webhook signing secret (`whsec_…`)
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Setup
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+```sh
+# 1. Install dependencies
+composer install
+npm install
 
-## Agentic Development
+# 2. Start PostgreSQL (or use your own server)
+docker run -d --name pixelforge-pg \
+  -e POSTGRES_USER=app -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=pixelforge \
+  -p 5432:5432 postgres:17-alpine
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+# 3. Configure the environment
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Edit `.env` and set the Pixelforge values:
 
-## Contributing
+```
+PIXELFORGE_API_KEY=your-api-key
+PIXELFORGE_WEBHOOK_SECRET=whsec_your-secret
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+The database settings in `.env.example` already match the Docker command above.
 
-## Code of Conduct
+```sh
+# 4. Create the tables
+php artisan migrate
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# 5. Build the frontend and run the app
+npm run build
+php artisan serve
+```
 
-## Security Vulnerabilities
+Open http://localhost:8000, register, and use **Credits** to add test money before generating.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+For development with hot reload, use `composer run dev` instead of step 5. It runs the server, queue worker, scheduler and Vite together.
 
-## License
+### Make yourself an admin
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+After registering:
+
+```sh
+php artisan app:make-admin you@example.com
+```
+
+An **Admin report** link then appears in the nav.
+
+### Receive webhooks
+
+Pixelforge must be able to reach your app over the public internet and rejects private or localhost URLs.
+
+1. Expose your local server with a tunnel, for example `ngrok http 8000`.
+2. In the Pixelforge dashboard, set the webhook URL for your API key to `https://<your-host>/webhooks/pixelforge`.
+3. Copy that key's signing secret into `PIXELFORGE_WEBHOOK_SECRET`.
+4. Set `APP_URL` in `.env` to the public URL.
+
+If webhooks can't reach you, run `php artisan generations:sync --older-than=0` (also scheduled every minute by `php artisan schedule:work`) to pull results directly.
+
+### Testing with Pixelforge keywords
+
+Put these in a prompt to trigger behaviour: `[succeed]`, `[fail]`, `[slow]`, `[duplicate]` (every webhook delivered twice), `[blocked]`, `[overloaded]`.
+
+## Tests
+
+```sh
+docker exec pixelforge-pg psql -U app -d pixelforge -c "CREATE DATABASE testing"   # once
+php artisan test
+```
+
+## Deployment
+
+Works on Laravel Cloud or any PHP host. Set the same environment variables as `.env`, run `php artisan migrate --force` and `npm run build` on deploy, and run the scheduler (`php artisan schedule:run` every minute). Then point the Pixelforge webhook URL at `https://<your-app>/webhooks/pixelforge`.
+
+## Project layout
+
+| Path | Purpose |
+|---|---|
+| `app/Services/` | Pricing, credits, generation submit, state machine, webhook signature, Pixelforge client |
+| `app/Http/Controllers/` | Generate/History, Credits, Admin report, Webhook |
+| `app/Console/Commands/` | `generations:sync`, `app:make-admin` |
+| `resources/js/Pages/` | Vue pages: Generate, History, Credits, Admin/Report |
+| `config/pixelforge.php` | Pricing constants, markup, credit packs |
+| `tests/Feature/` | Webhook and generation-flow tests |
