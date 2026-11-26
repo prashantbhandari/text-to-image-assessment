@@ -1,3 +1,110 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Design tokens: "darkroom" theme.
+ * Dark (default): warm charcoal with an ember-orange accent, like a safelight.
+ * Light: warm paper with the same accent, deepened for contrast.
+ *
+ * Colors are space-separated RGB triplets so Tailwind can add opacity (bg-accent/10).
+ *
+ * Contrast (WCAG AA, 4.5:1 for text):
+ *   dark : fg/surface 15:1, muted/surface 7:1, brand text/surface 11:1, accent-fg on accent 8.5:1
+ *   light: fg/surface 17:1, muted/surface 5.5:1, brand text/surface 7:1, accent-fg on accent 5.2:1
+ */
+@layer base {
+    :root {
+        --app: 250 248 244;
+        --surface: 255 255 255;
+        --surface-2: 244 241 235;
+        --line: 229 224 214;
+        --fg: 28 25 23;
+        --muted: 107 100 92;
+        --brand: 154 52 18; /* accent used as TEXT */
+        --accent: 194 65 12; /* accent used as FILL (buttons) */
+        --accent-fg: 255 255 255; /* text on accent fills */
+        color-scheme: light;
+    }
+
+    .dark {
+        --app: 12 10 9;
+        --surface: 23 20 18;
+        --surface-2: 34 30 27;
+        --line: 56 50 44;
+        --fg: 245 241 235;
+        --muted: 168 160 150;
+        --brand: 253 186 116;
+        --accent: 251 146 60;
+        --accent-fg: 28 15 5;
+        color-scheme: dark;
+    }
+
+    body {
+        @apply bg-app text-fg antialiased;
+        font-feature-settings: 'cv11', 'ss01';
+    }
+
+    h1, h2.display { font-family: 'Fraunces', ui-serif, Georgia, serif; letter-spacing: -0.02em; }
+
+    ::placeholder { color: rgb(var(--muted) / 0.7) !important; }
+    ::selection { background: rgb(var(--accent) / 0.35); }
+}
+
+@layer components {
+    /* Form controls follow the theme (the forms plugin hard-codes white). */
+    input:where([type='text'], [type='email'], [type='password'], [type='url'], [type='number'], [type='search']),
+    textarea,
+    select {
+        background-color: rgb(var(--surface-2));
+        color: rgb(var(--fg));
+        border-color: rgb(var(--line));
+    }
+    input[type='checkbox'], input[type='radio'] {
+        background-color: rgb(var(--surface-2));
+        border-color: rgb(var(--muted) / 0.6);
+    }
+    input[type='checkbox']:checked, input[type='radio']:checked { background-color: currentColor; }
+
+    :focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+
+    /* Primary action button. */
+    .btn-accent {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/20 transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-medium text-fg transition hover:bg-surface-2;
+    }
+    .card {
+        @apply rounded-2xl border border-line bg-surface shadow-card;
+    }
+
+    /* Subtle film-grain + warm glow behind every page. */
+    .page-bg {
+        background-image:
+            radial-gradient(60rem 28rem at 15% -10%, rgb(var(--accent) / 0.10), transparent 60%),
+            radial-gradient(40rem 24rem at 100% 0%, rgb(var(--accent) / 0.05), transparent 60%);
+    }
+    .grain::after {
+        content: '';
+        position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: 0.035;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+}
+
+@layer utilities {
+    /* Shimmer used for "in progress" image placeholders. */
+    .shimmer {
+        background: linear-gradient(110deg, rgb(var(--surface-2)) 30%, rgb(var(--line)) 50%, rgb(var(--surface-2)) 70%);
+        background-size: 200% 100%;
+        animation: shimmer 1.6s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    .fade-up { animation: fade-up .4s ease both; }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+    @media (prefers-reduced-motion: reduce) {
+        .shimmer, .fade-up, .animate-spin, .animate-pulse { animation: none !important; }
+    }
+}

@@ -8,14 +8,22 @@
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700|fraunces:400,600,700&display=swap" rel="stylesheet" />
+
+        <!-- Theme: dark by default; applied before first paint to avoid a flash. -->
+        <script>
+            (function () {
+                var t = localStorage.getItem('theme') || 'dark';
+                document.documentElement.classList.toggle('dark', t === 'dark');
+            })();
+        </script>
 
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead
     </head>
-    <body class="font-sans antialiased">
+    <body class="grain font-sans antialiased">
         @inertia
     </body>
 </html>
