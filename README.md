@@ -2,18 +2,20 @@
 
 A Laravel app where signed-in users generate images with the **Pixelforge** API and pay per image. Requests are sent to Pixelforge in the background, results arrive by webhook, and the generated images show up in the user's history once they finish.
 
-**Stack:** Laravel 13 · Inertia · Vue 3 · Tailwind CSS · PostgreSQL
+**Stack:** Laravel 13 · Inertia · Vue 3 · Tailwind CSS · PostgreSQL (also runs on MariaDB / MySQL)
 
 ## What it does
 
-- **Generate**: write a prompt, pick a size and quality, optionally add up to 4 reference image URLs. The estimated cost is shown before you submit.
-- **Pricing**: users pay Pixelforge's cost plus a 25% markup. The price shown up front is an estimate, because reasoning tokens are only known after completion. When a generation finishes, the actual cost is recorded. Failed generations are free.
-- **History**: live status (queued, processing, succeeded, failed), estimated and actual cost, and the image.
-- **Webhooks**: signatures are verified, duplicate events are ignored, and out-of-order events can't undo a finished generation. A polling command acts as a fallback.
-- **Credits**: users have a balance (credits are US dollars). A "Buy credits" button adds fake credits, and generating is blocked when the user can't afford it.
-- **Admin report**: operators see credit spend, provider cost and profit per day and per user, checked against Pixelforge's `GET /v1/usage`.
+- **Create**: write a prompt, pick a shape and quality, optionally add up to 4 reference image URLs. A live estimate (expected price, likely range, and a price for each quality level) is shown before you submit.
+- **Pricing**: users pay Pixelforge's cost plus a 25% markup. The up-front price is an estimate because reasoning tokens are only known after completion; when a generation finishes, the exact cost is recorded. Failed generations are free.
+- **History**: a gallery with live status (queued, processing, done, failed), estimated vs actual cost, filters, a zoomable preview, and per-image actions: **download, copy prompt, reuse** (re-opens Create with all settings filled in) and **delete**.
+- **Webhooks**: signatures are verified, duplicate events are ignored, out-of-order events can't undo a finished generation, and a polling command covers webhooks that never arrive.
+- **Credits**: each user has a balance (credits are US dollars). "Buy credits" adds fake credits, and creating an image is blocked when the user can't afford the worst case.
+- **Admin console** (operators only): a **Report** (spend, provider cost and profit by day and user, date range, CSV export, reconciled against Pixelforge's `GET /v1/usage`), a **Users** page (balances, spend, credit adjustments) and a **Webhooks** log (deliveries and outcomes).
+- **Protection**: rate limits on login, registration, password flows, image creation and credit actions, plus Pixelforge-aware capacity checks.
+- **Design**: warm "darkroom" theme, dark by default with a light mode toggle.
 
-Costs are stored as integer nanodollars (1 USD = 1,000,000,000), so sub-cent amounts are exact. See [DOCUMENTATION.md](DOCUMENTATION.md) for how everything works in detail.
+Costs are stored as integer nanodollars (1 USD = 1,000,000,000), so sub-cent amounts are exact. Financial records are never deleted: removing an image or an account keeps the books intact. See [DOCUMENTATION.md](DOCUMENTATION.md) for how everything works in detail.
 
 ## Requirements
 
@@ -69,7 +71,7 @@ After registering:
 php artisan app:make-admin you@example.com
 ```
 
-An **Admin report** link then appears in the nav.
+An **Admin** link then appears in the nav (it opens the operator console).
 
 ### Receive webhooks
 
@@ -93,17 +95,34 @@ docker exec pixelforge-pg psql -U app -d pixelforge -c "CREATE DATABASE testing"
 php artisan test
 ```
 
-## Deployment
+## Deployment (your own server)
 
-Works on Laravel Cloud or any PHP host. Set the same environment variables as `.env`, run `php artisan migrate --force` and `npm run build` on deploy, and run the scheduler (`php artisan schedule:run` every minute). Then point the Pixelforge webhook URL at `https://<your-app>/webhooks/pixelforge`.
+Works with **PostgreSQL, MariaDB (10.3+) or MySQL (5.7+/8)**: the full test suite passes on PostgreSQL 17, MariaDB 10.6 and MySQL 8.0. Set `DB_CONNECTION` to `pgsql`, `mariadb` or `mysql`.
+
+**With a shell** (VPS / dedicated server): PHP 8.3+ with the database extension, a web server with its document root at `public/`, HTTPS and Node.js for the build.
+
+```sh
+git pull && composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan migrate --force
+php artisan optimize          # caches config, routes and views
+```
+
+- **Environment:** copy `.env.example` to `.env` and set `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL` (your public https URL), the `DB_*` values, `PIXELFORGE_API_KEY` and `PIXELFORGE_WEBHOOK_SECRET`. Run `php artisan key:generate` once.
+- **Scheduler:** add one cron line so missed webhooks are polled every minute: `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`
+- **Permissions:** `storage/` and `bootstrap/cache/` must be writable by the web user.
+- **Webhook:** in the Pixelforge dashboard set the URL to `https://<your-domain>/webhooks/pixelforge`. The route skips CSRF and is verified by signature; trusted proxy headers are enabled for setups behind a load balancer.
+- **First admin:** register, then `php artisan app:make-admin you@example.com`.
+
+**Without a shell** (shared hosting with a control panel and phpMyAdmin): build on your computer (`composer install --no-dev`, `npm run build`), upload with the File Manager, and import `database/install/imagen-mariadb.sql` in phpMyAdmin instead of running migrations. If cron can only fetch a URL, set `CRON_TOKEN` and call `https://<your-domain>/cron/<token>` every minute. Note the PHP version requirement: the packages currently locked need PHP 8.4.1+ (re-lock with `composer config platform.php 8.3.0 && composer update` for PHP 8.3 hosts).
 
 ## Project layout
 
 | Path | Purpose |
 |---|---|
-| `app/Services/` | Pricing, credits, generation submit, state machine, webhook signature, Pixelforge client |
-| `app/Http/Controllers/` | Generate/History, Credits, Admin report, Webhook |
+| `app/Services/` | Pricing, credits, generation submit, state machine, webhook signature, Pixelforge client, admin report |
+| `app/Http/Controllers/` | Generate/History, Credits, Webhook, Profile, and `Admin/` (Report, Users, Webhook log) |
 | `app/Console/Commands/` | `generations:sync`, `app:make-admin` |
-| `resources/js/Pages/` | Vue pages: Generate, History, Credits, Admin/Report |
-| `config/pixelforge.php` | Pricing constants, markup, credit packs |
-| `tests/Feature/` | Webhook and generation-flow tests |
+| `resources/js/Pages/` | Vue pages: Generate, History, Credits, Admin/{Report,Users,Webhooks} |
+| `config/pixelforge.php` | Pricing constants, markup, limits, credit packs |
+| `tests/Feature/` | Webhooks, generation flow, history actions, rate limiting, admin console (66 tests) |

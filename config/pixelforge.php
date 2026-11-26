@@ -10,6 +10,10 @@ return [
     // whsec_... secret used to verify the Pixelforge-Signature header.
     'webhook_secret' => env('PIXELFORGE_WEBHOOK_SECRET'),
 
+    // Secret for GET /cron/<token>, which runs the scheduler on hosts without a shell.
+    // Leave empty to disable the endpoint.
+    'cron_token' => env('CRON_TOKEN'),
+
     // Max allowed clock skew (seconds) between signature timestamp and now.
     'webhook_tolerance' => 300,
 
